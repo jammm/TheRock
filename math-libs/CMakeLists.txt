@@ -11,6 +11,7 @@ if(THEROCK_ENABLE_RAND)
       -DHIP_PLATFORM=amd
       -DROCM_PATH=
       -DROCM_DIR=
+      -DBUILD_TEST=${THEROCK_BUILD_TESTING}
     COMPILER_TOOLCHAIN
       amd-hip
     RUNTIME_DEPS
@@ -35,6 +36,7 @@ if(THEROCK_ENABLE_RAND)
       -DHIP_PLATFORM=amd
       -DROCM_PATH=
       -DROCM_DIR=
+      -DBUILD_TEST=${THEROCK_BUILD_TESTING}
     COMPILER_TOOLCHAIN
       amd-hip
     BUILD_DEPS
@@ -62,6 +64,7 @@ if(THEROCK_ENABLE_RAND)
       doc
       lib
       run
+      test
     SUBPROJECT_DEPS ${_rand_subproject_names}
   )
 endif(THEROCK_ENABLE_RAND)
