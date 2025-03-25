@@ -267,6 +267,9 @@ set(hipBLAS_optional_deps)
 if(THEROCK_ENABLE_SOLVER)
   list(APPEND hipBLAS_optional_deps rocSOLVER)
 endif()
+if(THEROCK_BUILD_TESTING)
+  list(APPEND hipBLAS_optional_deps therock-host-blas)
+endif()
 
 therock_cmake_subproject_declare(hipBLAS
   EXTERNAL_SOURCE_DIR "hipBLAS"
@@ -276,6 +279,10 @@ therock_cmake_subproject_declare(hipBLAS
     -DROCM_PATH=
     -DROCM_DIR=
     "-DBUILD_WITH_SOLVER=${THEROCK_ENABLE_SOLVER}"
+    -DBUILD_CLIENTS_TESTS=${THEROCK_BUILD_TESTING}
+    -DBUILD_CLIENTS_BENCHMARKS=${THEROCK_BUILD_TESTING}
+    -DBUILD_CLIENTS_SAMPLES=OFF
+    -DLINK_BLIS=OFF
   COMPILER_TOOLCHAIN
     amd-hip
   BUILD_DEPS
