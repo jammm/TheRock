@@ -32,6 +32,7 @@ if(THEROCK_ENABLE_MIOPEN)
       -DMIOPEN_USE_MLIR=OFF # TODO: enable
       -DMIOPEN_BUILD_DRIVER=ON
       -DMIOPEN_USE_ROCTRACER=OFF # TODO: enable
+      -DMIOPEN_USE_HIPBLASLT=ON # For windows, this was hard-coded to OFF by default
       -DBoost_COMPILER=${_THEROCK_MIOPEN_OVERRIDE_BOOST_COMPILER}
     COMPILER_TOOLCHAIN
       amd-hip
