@@ -1,7 +1,7 @@
 From af7f102622add278151c0dd15d88473cb674481c Mon Sep 17 00:00:00 2001
 From: Aaryaman Vasishta <jem456.vasishta@gmail.com>
 Date: Sun, 4 May 2025 22:24:50 +0530
-Subject: [PATCH 12/12] [ROCm][Windows] Fixes for compilation on Windows using
+Subject: [PATCH 12/13] [ROCm][Windows] Fixes for compilation on Windows using
  clang-cl
 
 ---
