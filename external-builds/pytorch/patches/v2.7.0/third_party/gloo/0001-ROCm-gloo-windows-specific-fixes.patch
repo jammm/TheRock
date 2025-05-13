@@ -1,0 +1,59 @@
+From e12ab2b2da99e034deffe35d47d5c0bcf9f06bd3 Mon Sep 17 00:00:00 2001
+From: Aaryaman Vasishta <jem456.vasishta@gmail.com>
+Date: Tue, 13 May 2025 22:54:59 +0530
+Subject: [PATCH] [ROCm][gloo] windows specific fixes
+
+---
+ cmake/Dependencies.cmake | 10 ++++++----
+ cmake/Hipify.cmake       |  5 ++++-
+ 2 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index 2e0a9da..b1b4d60 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -140,15 +140,17 @@ if(USE_ROCM)
+   include(cmake/Hip.cmake)
+   if(HAVE_HIP)
+     include(cmake/Hipify.cmake)
+-    list(APPEND HIP_CXX_FLAGS -fPIC)
+     list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_AMD__=1)
+     list(APPEND HIP_CXX_FLAGS -DCUDA_HAS_FP16=1)
+     list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_OPERATORS__=1)
+     list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_CONVERSIONS__=1)
+     list(APPEND HIP_CXX_FLAGS -DHIP_VERSION=${HIP_VERSION_MAJOR})
+-    list(APPEND HIP_CXX_FLAGS -Wno-shift-count-negative)
+-    list(APPEND HIP_CXX_FLAGS -Wno-shift-count-overflow)
+-    list(APPEND HIP_CXX_FLAGS -Wno-duplicate-decl-specifier)
++    if(NOT WIN32)
++      list(APPEND HIP_CXX_FLAGS -fPIC)
++      list(APPEND HIP_CXX_FLAGS -Wno-shift-count-negative)
++      list(APPEND HIP_CXX_FLAGS -Wno-shift-count-overflow)
++      list(APPEND HIP_CXX_FLAGS -Wno-duplicate-decl-specifier)
++    endif()
+     list(APPEND HIP_CXX_FLAGS -DUSE_MIOPEN)
+ 
+     set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
+diff --git a/cmake/Hipify.cmake b/cmake/Hipify.cmake
+index c316cf5..674bc07 100644
+--- a/cmake/Hipify.cmake
++++ b/cmake/Hipify.cmake
+@@ -9,11 +9,14 @@ endfunction(prepend)
+ set(HIPIFY_SCRIPTS_DIR ${PROJECT_SOURCE_DIR}/tools/amd_build)
+ file(GLOB HIPIFY_SCRIPTS ${HIPIFY_SCRIPTS_DIR}/*.py)
+ set(HIPIFY_OUTPUT_ROOT_DIR ${PROJECT_BINARY_DIR}/hip)
++
++find_package (Python3 COMPONENTS Interpreter)
+ set(HIPIFY_COMMAND
+-  ${HIPIFY_SCRIPTS_DIR}/build_amd.py
++  ${Python3_EXECUTABLE} ${HIPIFY_SCRIPTS_DIR}/build_amd.py
+   --project-directory ${PROJECT_SOURCE_DIR}
+   --output-directory ${HIPIFY_OUTPUT_ROOT_DIR}
+ )
++
+ execute_process(
+   COMMAND ${HIPIFY_COMMAND} --list-files-only
+   OUTPUT_VARIABLE HIPIFY_FILES
+-- 
+2.49.0.windows.1
+
