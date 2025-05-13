@@ -1,7 +1,7 @@
 From 1154f33ffade19ea4b65f1d5c4032357655f332c Mon Sep 17 00:00:00 2001
 From: Aaryaman Vasishta <jem456.vasishta@gmail.com>
 Date: Tue, 13 May 2025 15:53:30 +0530
-Subject: [PATCH 13/13] [ROCm][Windows] Windows specific fixes for aotriton
+Subject: [PATCH 13/14] [ROCm][Windows] Windows specific fixes for aotriton
  support
 
 ---

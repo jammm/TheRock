@@ -1,0 +1,41 @@
+From afb201d3d2d3a624ea68a71361721c540c3d0b93 Mon Sep 17 00:00:00 2001
+From: Aaryaman Vasishta <jem456.vasishta@gmail.com>
+Date: Tue, 13 May 2025 22:44:03 +0530
+Subject: [PATCH 14/14] [ROCm][Windows] Fixes for USE_DISTRIBUTED=ON on Windows
+
+---
+ setup.py                                  | 3 ---
+ torch/csrc/distributed/c10d/FileStore.cpp | 3 +++
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/setup.py b/setup.py
+index 61ee9363fc..3b886ba682 100644
+--- a/setup.py
++++ b/setup.py
+@@ -680,9 +680,6 @@ class build_ext(setuptools.command.build_ext.build_ext):
+         else:
+             report("-- Not using NCCL")
+         if cmake_cache_vars["USE_DISTRIBUTED"]:
+-            if IS_WINDOWS:
+-                report("-- Building without distributed package")
+-            else:
+                 report("-- Building with distributed package: ")
+                 report(
+                     "  -- USE_TENSORPIPE={}".format(cmake_cache_vars["USE_TENSORPIPE"])
+diff --git a/torch/csrc/distributed/c10d/FileStore.cpp b/torch/csrc/distributed/c10d/FileStore.cpp
+index 57b5f8f183..1e861df62f 100644
+--- a/torch/csrc/distributed/c10d/FileStore.cpp
++++ b/torch/csrc/distributed/c10d/FileStore.cpp
+@@ -33,6 +33,9 @@
+ #define LOCK_SH 0x00000010
+ #define LOCK_UN 0x00000100
+ 
++#if defined(_MSC_VER) && defined(__clang__)
++static
++#endif
+ int flock_(int fd, int op) {
+   HANDLE hdl = (HANDLE)_get_osfhandle(fd);
+   DWORD low = 1, high = 0;
+-- 
+2.49.0.windows.1
+
