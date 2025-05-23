@@ -1,0 +1,39 @@
+From c1c2abe5240010a84ee47aa6d38778197ec91b11 Mon Sep 17 00:00:00 2001
+From: Aaryaman Vasishta <jem456.vasishta@gmail.com>
+Date: Fri, 23 May 2025 20:41:06 +0530
+Subject: [PATCH 3/3] Support gfx1201 in Windows
+
+Co-authored-by: Scott Tsai <scottt.tw@gmail.com>
+Co-authored-by: Stella Laurenzo <stellaraccident@gmail.com>
+---
+ rocclr/device/pal/paldevice.cpp   | 1 +
+ rocclr/device/pal/palsettings.cpp | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/rocclr/device/pal/paldevice.cpp b/rocclr/device/pal/paldevice.cpp
+index e10f8e211..e07e19820 100644
+--- a/rocclr/device/pal/paldevice.cpp
++++ b/rocclr/device/pal/paldevice.cpp
+@@ -102,6 +102,7 @@ static constexpr PalDevice supportedPalDevices[] = {
+   {11, 0,  3,  Pal::GfxIpLevel::GfxIp11_0, "gfx1103",       Pal::AsicRevision::HawkPoint2},
+   {11, 5,  0,  Pal::GfxIpLevel::GfxIp11_5, "gfx1150",       Pal::AsicRevision::Strix1},
+   {11, 5,  1,  Pal::GfxIpLevel::GfxIp11_5, "gfx1151",       Pal::AsicRevision::StrixHalo},
++  {12, 0,  1,  Pal::GfxIpLevel::GfxIp12,   "gfx1201",       Pal::AsicRevision::Navi48},
+ };
+ 
+ static std::tuple<const amd::Isa*, const char*> findIsa(Pal::AsicRevision asicRevision,
+diff --git a/rocclr/device/pal/palsettings.cpp b/rocclr/device/pal/palsettings.cpp
+index 8361a950c..d5646f88e 100644
+--- a/rocclr/device/pal/palsettings.cpp
++++ b/rocclr/device/pal/palsettings.cpp
+@@ -165,6 +165,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
+     case Pal::AsicRevision::Navi33:
+     case Pal::AsicRevision::Navi32:
+     case Pal::AsicRevision::Navi31:
++    case Pal::AsicRevision::Navi48:
+       gwsInitSupported_ = false;
+     // Fall through for Navi2x ...
+     case Pal::AsicRevision::StrixHalo:
+-- 
+2.49.0.windows.1
+
