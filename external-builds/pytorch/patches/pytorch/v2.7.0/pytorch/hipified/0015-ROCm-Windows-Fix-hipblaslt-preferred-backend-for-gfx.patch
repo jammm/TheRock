@@ -1,0 +1,114 @@
+From 3f903c367f6b839487cd13e190f8f5a131b69c41 Mon Sep 17 00:00:00 2001
+From: Aaryaman Vasishta <jem456.vasishta@gmail.com>
+Date: Sat, 24 May 2025 16:32:19 +0530
+Subject: [PATCH] [ROCm][Windows] Fix hipblaslt preferred backend for
+ gfx110x/gfx115x/gfx1201
+
+---
+ aten/src/ATen/Context.cpp                                    | 5 ++++-
+ aten/src/ATen/native/cuda/Blas.cpp                           | 4 ++--
+ aten/src/ATen/native/hip/Blas.cpp                            | 4 ++--
+ aten/src/ATen/native/transformers/cuda/attention.cu          | 4 ++--
+ aten/src/ATen/native/transformers/cuda/attention_backward.cu | 4 ++--
+ 5 files changed, 12 insertions(+), 9 deletions(-)
+
+diff --git a/aten/src/ATen/Context.cpp b/aten/src/ATen/Context.cpp
+index d384b5e6b2..658b8e33f5 100644
+--- a/aten/src/ATen/Context.cpp
++++ b/aten/src/ATen/Context.cpp
+@@ -335,6 +335,9 @@ at::BlasBackend Context::blasPreferredBackend() {
+     static const bool hipblaslt_preferred = []() {
+       static const std::vector<std::string> archs = {
+           "gfx90a", "gfx942",
++#if ROCM_VERSION >= 60300
++          "gfx1100", "gfx1101", "gfx1102", "gfx1103", "gfx1150", "gfx1151", "gfx1200", "gfx1201",
++#endif
+ #if ROCM_VERSION >= 60500
+           "gfx950"
+ #endif
+@@ -359,7 +362,7 @@ at::BlasBackend Context::blasPreferredBackend() {
+       static const std::vector<std::string> archs = {
+           "gfx90a", "gfx942",
+ #if ROCM_VERSION >= 60300
+-          "gfx1100", "gfx1101", "gfx1150", "gfx1151", "gfx1200", "gfx1201"
++          "gfx1100", "gfx1101", "gfx1102", "gfx1103", "gfx1150", "gfx1151", "gfx1200", "gfx1201",
+ #endif
+ #if ROCM_VERSION >= 60500
+           "gfx950"
+diff --git a/aten/src/ATen/native/cuda/Blas.cpp b/aten/src/ATen/native/cuda/Blas.cpp
+index 592c04693c..4b032b28ee 100644
+--- a/aten/src/ATen/native/cuda/Blas.cpp
++++ b/aten/src/ATen/native/cuda/Blas.cpp
+@@ -259,7 +259,7 @@ static bool isSupportedHipLtROCmArch(int index) {
+     static const std::vector<std::string> archs = {
+         "gfx90a", "gfx942",
+ #if ROCM_VERSION >= 60300
+-        "gfx1100", "gfx1101", "gfx1150", "gfx1151", "gfx1200", "gfx1201"
++        "gfx1100", "gfx1101", "gfx1102", "gfx1103", "gfx1150", "gfx1151", "gfx1200", "gfx1201",
+ #endif
+ #if ROCM_VERSION >= 60500
+         "gfx950"
+@@ -934,7 +934,7 @@ static bool _scaled_mm_allowed_device() {
+     static const std::vector<std::string> archs = {
+         "gfx942",
+ #if ROCM_VERSION >= 60300
+-        "gfx1200", "gfx1201"
++        "gfx1200", "gfx1201",
+ #endif
+ #if ROCM_VERSION >= 60500
+         "gfx950"
+diff --git a/aten/src/ATen/native/hip/Blas.cpp b/aten/src/ATen/native/hip/Blas.cpp
+index 734af694b0..b71fd4fe6a 100644
+--- a/aten/src/ATen/native/hip/Blas.cpp
++++ b/aten/src/ATen/native/hip/Blas.cpp
+@@ -260,7 +260,7 @@ static bool isSupportedHipLtROCmArch(int index) {
+     static const std::vector<std::string> archs = {
+         "gfx90a", "gfx942",
+ #if ROCM_VERSION >= 60300
+-        "gfx1100", "gfx1101", "gfx1150", "gfx1151", "gfx1200", "gfx1201"
++        "gfx1100", "gfx1101", "gfx1102", "gfx1103", "gfx1150", "gfx1151", "gfx1200", "gfx1201",
+ #endif
+ #if ROCM_VERSION >= 60500
+         "gfx950"
+@@ -935,7 +935,7 @@ static bool _scaled_mm_allowed_device() {
+     static const std::vector<std::string> archs = {
+         "gfx942",
+ #if ROCM_VERSION >= 60300
+-        "gfx1200", "gfx1201"
++        "gfx1200", "gfx1201",
+ #endif
+ #if ROCM_VERSION >= 60500
+         "gfx950"
+diff --git a/aten/src/ATen/native/transformers/cuda/attention.cu b/aten/src/ATen/native/transformers/cuda/attention.cu
+index 248e3d2763..a8a6b38adb 100644
+--- a/aten/src/ATen/native/transformers/cuda/attention.cu
++++ b/aten/src/ATen/native/transformers/cuda/attention.cu
+@@ -1290,8 +1290,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, c10::SymInt, c10::SymInt> _efficient_
+     auto ret = aotriton::v2::flash::check_gpu(stream);
+     if (hipSuccess != ret) {
+         TORCH_CHECK(false,
+-                  "[AOTriton] Accelerated SDPA only supports MI200/MI300X/Navi31 GPUs"
+-                  " (gfx90a:sramecc+:xnack-/gfx942:sramecc+:xnack-/gfx1100)")
++                  "[AOTriton] Accelerated SDPA only supports MI200/MI300X/Navi3x/8070S/Navi48 GPUs"
++                  " (gfx90a:sramecc+:xnack-/gfx942:sramecc+:xnack-/gfx110x/gfx1151/gfx1201)")
+     }
+ 
+     // AOTriton may accept aligned on logsumexp tensor in the future for better
+diff --git a/aten/src/ATen/native/transformers/cuda/attention_backward.cu b/aten/src/ATen/native/transformers/cuda/attention_backward.cu
+index f5dd4f6572..a6cccdd528 100644
+--- a/aten/src/ATen/native/transformers/cuda/attention_backward.cu
++++ b/aten/src/ATen/native/transformers/cuda/attention_backward.cu
+@@ -460,8 +460,8 @@ _efficient_attention_backward(
+     auto ret = aotriton::v2::flash::check_gpu(stream);
+     if (hipSuccess != ret) {
+       TORCH_CHECK(false,
+-                "[AOTriton] Accelerated SDPA only supports MI200/MI300X/7900XTX/9070XT GPUs"
+-                " (gfx90a/gfx942/gfx1100/gfx1201)")
++                "[AOTriton] Accelerated SDPA only supports MI200/MI300X/Navi3x/8070S/9070XT GPUs"
++                " (gfx90a/gfx942/gfx110x/gfx1151/gfx1201)")
+     }
+     const auto softmax_scale = sdp::calculate_scale(query, scale).expect_float();
+     bool is_causal;
+-- 
+2.49.0.windows.1
+
