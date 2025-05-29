@@ -1,0 +1,25 @@
+From f716a5d019e3f6a6a921d727f9770aa737608775 Mon Sep 17 00:00:00 2001
+From: Aaryaman Vasishta <jem456.vasishta@gmail.com>
+Date: Thu, 29 May 2025 23:08:48 +0530
+Subject: [PATCH 2/2] Enable BUILD_WITH_HIPBLASLT for Windows
+
+---
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d2876a61..4b6c54d9 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -149,7 +149,7 @@ option( BUILD_WITH_HIPBLASLT "Build with HipBLASLt" ON )
+ set( hipblaslt_path "/opt/rocm" CACHE PATH "Use local HipBLASLt directory" )
+ set( HIPBLASLT_VERSION 0.13 CACHE STRING "The version of HipBLASLt to be used" )
+ 
+-if( WIN32 OR NOT BUILD_WITH_TENSILE OR NOT BUILD_SHARED_LIBS )
++if( NOT BUILD_WITH_TENSILE OR NOT BUILD_SHARED_LIBS )
+   set( BUILD_WITH_HIPBLASLT OFF )
+ endif()
+ 
+-- 
+2.49.0.windows.1
+

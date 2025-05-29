@@ -1,0 +1,275 @@
+From 70fb7612a9d519c3cd53ccf9f222fe40e27178af Mon Sep 17 00:00:00 2001
+From: Yifan Zhang <yifan1.zhang@amd.com>
+Date: Thu, 25 Apr 2024 13:53:51 +0800
+Subject: [PATCH] enable gfx1103 for Tensile
+
+Co-authored-by: Aaryaman Vasishta <jem456.vasishta@gmail.com>
+---
+ Tensile/AsmCaps.py                            | 44 +++++++++++++++++++
+ Tensile/Common.py                             | 30 ++++++-------
+ Tensile/Source/CMakeLists.txt                 |  4 +-
+ Tensile/Source/lib/include/Tensile/AMDGPU.hpp |  9 +++-
+ .../include/Tensile/PlaceholderLibrary.hpp    |  3 ++
+ .../Tensile/Serialization/Predicates.hpp      |  1 +
+ pytest.ini                                    |  2 +
+ 7 files changed, 75 insertions(+), 18 deletions(-)
+
+diff --git a/Tensile/AsmCaps.py b/Tensile/AsmCaps.py
+index ea0a68ae..7d290152 100644
+--- a/Tensile/AsmCaps.py
++++ b/Tensile/AsmCaps.py
+@@ -741,6 +741,50 @@ def getCapabilitiesCache(rocmVersion: NamedTuple) -> dict:
+                   'v_mov_b64': False,
+                   'v_pk_fma_f16': True,
+                   'v_pk_fmac_f16': False},
++     (11, 0, 3): {'HasAddLshl': True,
++                  'HasAtomicAdd': True,
++                  'HasDirectToLdsDest': False,
++                  'HasDirectToLdsNoDest': False,
++                  'HasExplicitCO': True,
++                  'HasExplicitNC': True,
++                  'HasGLCModifier': True,
++                  'HasNTModifier': False,
++                  'HasLshlOr': True,
++                  'HasMFMA': False,
++                  'HasMFMA_b8': False,
++                  'HasMFMA_bf16_1k': False,
++                  'HasMFMA_bf16_original': False,
++                  'HasMFMA_constSrc': False,
++                  'HasMFMA_f64': False,
++                  'HasMFMA_f8': False,
++                  'HasMFMA_i8_908': False,
++                  'HasMFMA_i8_940': False,
++                  'HasMFMA_vgpr': False,
++                  'HasMFMA_xf32': False,
++                  'HasSMulHi': True,
++                  'HasWMMA': True,
++                  'KernargPreloading': False,
++                  'MaxLgkmcnt': 15,
++                  'MaxVmcnt': 63,
++                  'SupportedISA': True,
++                  'SupportedSource': True,
++                  'VOP3v_dot4_i32_i8': False,
++                  'v_dot2_f32_f16': True,
++                  'v_dot2c_f32_f16': True,
++                  'v_dot4_i32_i8': False,
++                  'v_dot4c_i32_i8': False,
++                  'v_fma_f16': True,
++                  'v_fma_f32': True,
++                  'v_fma_f64': True,
++                  'v_fma_mix_f32': True,
++                  'v_fmac_f16': False,
++                  'v_fmac_f32': True,
++                  'v_mac_f16': False,
++                  'v_mac_f32': False,
++                  'v_mad_mix_f32': False,
++                  'v_mov_b64': False,
++                  'v_pk_fma_f16': True,
++                  'v_pk_fmac_f16': False},
+      (11, 5, 1): {'HasAddLshl': True,
+                   'HasAtomicAdd': True,
+                   'HasDirectToLdsDest': False,
+diff --git a/Tensile/Common.py b/Tensile/Common.py
+index 9ca48e06..a87f3e34 100644
+--- a/Tensile/Common.py
++++ b/Tensile/Common.py
+@@ -249,7 +249,7 @@ globalParameters["SupportedISA"] = [(8,0,3),
+                                     (9,0,0), (9,0,6), (9,0,8), (9,0,10),
+                                     (9,4,2), (9,5,0),
+                                     (10,1,0), (10,1,1), (10,1,2), (10,3,0), (10,3,1),
+-                                    (11,0,0), (11,0,1), (11,0,2),
++                                    (11,0,0), (11,0,1), (11,0,2), (11,0,3),
+                                     (11,5,1),
+                                     (12,0,0), (12,0,1)] # assembly kernels writer supports these architectures
+ 
+@@ -325,7 +325,7 @@ architectureMap = {
+   'gfx950':'gfx950', 'gfx950:xnack+':'gfx950', 'gfx950:xnack-':'gfx950',
+   'gfx1010':'navi10', 'gfx1011':'navi12', 'gfx1012':'navi14',
+   'gfx1030':'navi21', 'gfx1031':'navi22', 'gfx1032':'navi23', 'gfx1034':'navi24', 'gfx1035':'rembrandt',
+-  'gfx1100':'navi31', 'gfx1101':'navi32', 'gfx1102':'navi33',
++  'gfx1100':'navi31', 'gfx1101':'navi32', 'gfx1102':'navi33', 'gfx1103':'phoenix',
+   'gfx1151':'gfx1151',
+   'gfx1200':'gfx1200',
+   'gfx1201':'gfx1201'
+@@ -567,7 +567,7 @@ validParameters = {
+     # Chooses how to do GlobalSplitU:
+     # - SingleBuffer: uses atomic operation to accumulate on one buffer
+     # - MultipleBuffer: each GSU group writes to its own buffer and the postGSU accumulates the buffer
+-    # if GlobalSplitU=1, this parameter will be ignored (and will be set to SingleBuffer if it is 
++    # if GlobalSplitU=1, this parameter will be ignored (and will be set to SingleBuffer if it is
+     # MultipleBuffer for consistency in lib logics).
+     # GSU/GSUAlo can be used with all gemm types, except for I8II.
+     # When GSU>1, we need extra kernels (other than the main assembly kernel) to do the computations. The language of these
+@@ -809,7 +809,7 @@ validParameters = {
+     #   - Optimizations enabled by AssertSummationElementMultiple>1 will be adjusted as follows.
+     #     ASEM%GSU == 0 and ASEM//GSU will be used for optimizations instead of ASEM
+     #     For example, if ASEM is 8 and GSU is 2, K is multiple of 8 but K is divided by GSU.
+-    #     In that case, we can still guarantee K/GSU is multiple of 4 (= ASEM/GSU) and 
++    #     In that case, we can still guarantee K/GSU is multiple of 4 (= ASEM/GSU) and
+     #     we can use ASEM//GSU=4 for optimizations
+     #
+     # 1 indicates no assertion (since all sizes are multiples of 1)
+@@ -1489,7 +1489,7 @@ validParameters = {
+     "MinVgprNumber":                list(range(0,256)),
+ 
+     "MaxVgprNumber":                list(range(0,257)),
+-    # min K size to use GlobalSplitU algorithm 
++    # min K size to use GlobalSplitU algorithm
+     "MinKForGSU":                   [16,32,64,128,256]
+     }
+ 
+@@ -1751,7 +1751,7 @@ defaultProblemType = {
+     "DataType":                 0,                # data types can specified by a variety of ways, such as "s", as listed in SolutionStructs.py::DataType
+     "DestDataType":             0,                # destination data types can specified by a variety of ways, such as "s", as listed in SolutionStructs.py::DataType
+     "ComputeDataType":          0,                # compute data types can specified by a variety of ways, such as "s", as listed in SolutionStructs.py::DataType
+-    
++
+     "UseBeta":                  True,             # =True use beta parameter (asm will check for B=0 and optimize the write for that), =False don't use beta parameter
+     "HighPrecisionAccumulate":  False,            # f32 += f16*f16
+     "SilentHighPrecisionAccumulate": False,       # Keep kernel names the same for HPA mode.  Useful for testing.
+@@ -1872,12 +1872,12 @@ defaultProblemType = {
+     # FP16 Alternate Implementation
+     "Fp16AltImpl":              False,
+     "Fp16AltImplRound":         False,
+-    
+-    # Use unpack version of up-conversion instruction for f8/b8. 
++
++    # Use unpack version of up-conversion instruction for f8/b8.
+     "Fp8NoPackUpConversion" :   False,
+ 
+-    # S/W clipping of f32 to f8/b8 down conversion. When it is set, the kernel clips any value which is greater 
+-    # than max_f8_value (e.g., 240.0 for f8) to max_f8_value in down conversion. NaN and +/-INF are propagated. 
++    # S/W clipping of f32 to f8/b8 down conversion. When it is set, the kernel clips any value which is greater
++    # than max_f8_value (e.g., 240.0 for f8) to max_f8_value in down conversion. NaN and +/-INF are propagated.
+     # By default, it is set for f8 kernels.
+     "Fp32toFp8SWClip" :         True,
+ 
+@@ -1886,11 +1886,11 @@ defaultProblemType = {
+ 
+     # Rounding mode for f32 to f8 down conversion
+     # TODO in Future:
+-    # There are two different rounding modes for f32 to f8 down conversion: [0]: IEEE RNE mode and [1/2]: stochastic mode. 
+-    # For stochastic mode, there are two implementations to use random numbers in H/W instruction: 
++    # There are two different rounding modes for f32 to f8 down conversion: [0]: IEEE RNE mode and [1/2]: stochastic mode.
++    # For stochastic mode, there are two implementations to use random numbers in H/W instruction:
+     #   In-device [1]: we need to pass the seed of random number and kernel will generate the pseudo-random numbers
+-    #   RND-table [2]: we need to pass a table of random numbers to the kernel, NOT implemented yet  
+-    #"StochasticRounding" :     0  # [0,1,2]   0=NA, 1=in-device, 2=RND Table. By default, IEEE RNE rounding    
++    #   RND-table [2]: we need to pass a table of random numbers to the kernel, NOT implemented yet
++    #"StochasticRounding" :     0  # [0,1,2]   0=NA, 1=in-device, 2=RND Table. By default, IEEE RNE rounding
+     }
+ 
+ defaultProblemSizes = [{"Range": [ [2880], 0, 0 ]}]
+@@ -2465,7 +2465,7 @@ def assignGlobalParameters( config, capabilitiesCache: Optional[dict] = None ):
+     if os.name == "nt":
+       globalParameters["CurrentISA"] = (9,0,6)
+       printWarning("Failed to detect ISA so forcing (gfx906) on windows")
+-  isasWithDisabledHWMonitor = ((9,4,2), (9,5,0), (11,0,0), (11,0,1), (11,0,2), (12,0,0), (12,0,1))
++  isasWithDisabledHWMonitor = ((9,4,2), (9,5,0), (11,0,0), (11,0,1), (11,0,2), (11,0,3), (12,0,0), (12,0,1))
+   if globalParameters["CurrentISA"] in isasWithDisabledHWMonitor:
+     isaString = ', '.join(map(gfxName, isasWithDisabledHWMonitor))
+     printWarning(f"HardwareMonitor currently disabled for {isaString}")
+diff --git a/Tensile/Source/CMakeLists.txt b/Tensile/Source/CMakeLists.txt
+index e02b209a..aa1d16e1 100644
+--- a/Tensile/Source/CMakeLists.txt
++++ b/Tensile/Source/CMakeLists.txt
+@@ -51,9 +51,9 @@ if(CMAKE_CXX_COMPILER MATCHES ".*/hipcc$" OR CMAKE_CXX_COMPILER MATCHES ".*clang
+ endif()
+ 
+ if(CMAKE_CXX_COMPILER STREQUAL "hipcc")
+-  set(TENSILE_GPU_ARCHS gfx803 gfx900 gfx906:xnack- gfx908:xnack- gfx90a:xnack- gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 CACHE STRING "GPU architectures")
++  set(TENSILE_GPU_ARCHS gfx803 gfx900 gfx906:xnack- gfx908:xnack- gfx90a:xnack- gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 gfx1103 CACHE STRING "GPU architectures")
+ else()
+-  set(TENSILE_GPU_ARCHS gfx803 gfx900 gfx906 gfx908 gfx90a gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 CACHE STRING "GPU architectures")
++  set(TENSILE_GPU_ARCHS gfx803 gfx900 gfx906 gfx908 gfx90a gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 gfx1103 CACHE STRING "GPU architectures")
+ endif()
+ 
+ include(CMakeDependentOption)
+diff --git a/Tensile/Source/lib/include/Tensile/AMDGPU.hpp b/Tensile/Source/lib/include/Tensile/AMDGPU.hpp
+index 0d99a35f..bbdb4693 100644
+--- a/Tensile/Source/lib/include/Tensile/AMDGPU.hpp
++++ b/Tensile/Source/lib/include/Tensile/AMDGPU.hpp
+@@ -72,7 +72,8 @@ namespace Tensile
+             gfx1035 = 1035,
+             gfx1100 = 1100,
+             gfx1101 = 1101,
+-            gfx1102 = 1102
++            gfx1102 = 1102,
++            gfx1103 = 1103
+         };
+ 
+         static std::string toString(Processor p)
+@@ -115,6 +116,8 @@ namespace Tensile
+                 return "gfx1101";
+             case AMDGPU::Processor::gfx1102:
+                 return "gfx1102";
++            case AMDGPU::Processor::gfx1103:
++                return "gfx1103";
+             }
+             return "";
+         }
+@@ -177,6 +180,10 @@ namespace Tensile
+             {
+                 return AMDGPU::Processor::gfx1102;
+             }
++            else if(deviceString.find("gfx1103") != std::string::npos)
++            {
++                return AMDGPU::Processor::gfx1103;
++            }
+             else
+             {
+                 return static_cast<AMDGPU::Processor>(0);
+diff --git a/Tensile/Source/lib/include/Tensile/PlaceholderLibrary.hpp b/Tensile/Source/lib/include/Tensile/PlaceholderLibrary.hpp
+index 2ea803e1..3f35acdf 100644
+--- a/Tensile/Source/lib/include/Tensile/PlaceholderLibrary.hpp
++++ b/Tensile/Source/lib/include/Tensile/PlaceholderLibrary.hpp
+@@ -57,6 +57,7 @@ namespace Tensile
+         gfx1100,
+         gfx1101,
+         gfx1102,
++        gfx1103,
+         All
+     };
+ 
+@@ -103,6 +104,8 @@ namespace Tensile
+             return "TensileLibrary_*_gfx1101";
+         case LazyLoadingInit::gfx1102:
+             return "TensileLibrary_*_gfx1102";
++        case LazyLoadingInit::gfx1103:
++            return "TensileLibrary_*_gfx1103";
+         case LazyLoadingInit::None:
+             return "";
+         }
+diff --git a/Tensile/Source/lib/include/Tensile/Serialization/Predicates.hpp b/Tensile/Source/lib/include/Tensile/Serialization/Predicates.hpp
+index 5480eb54..21cce48d 100644
+--- a/Tensile/Source/lib/include/Tensile/Serialization/Predicates.hpp
++++ b/Tensile/Source/lib/include/Tensile/Serialization/Predicates.hpp
+@@ -233,6 +233,7 @@ namespace Tensile
+                 iot::enumCase(io, value, "gfx1100", AMDGPU::Processor::gfx1100);
+                 iot::enumCase(io, value, "gfx1101", AMDGPU::Processor::gfx1101);
+                 iot::enumCase(io, value, "gfx1102", AMDGPU::Processor::gfx1102);
++                iot::enumCase(io, value, "gfx1103", AMDGPU::Processor::gfx1103);
+             }
+         };
+ 
+diff --git a/pytest.ini b/pytest.ini
+index 3614a7f0..800ddb63 100644
+--- a/pytest.ini
++++ b/pytest.ini
+@@ -107,6 +107,7 @@ markers =
+  xfail-gfx1100: architecture
+  xfail-gfx1101: architecture
+  xfail-gfx1102: architecture
++ xfail-gfx1103: architecture
+  skip-gfx000:  architecture
+  skip-gfx900:  architecture
+  skip-gfx906:  architecture
+@@ -127,4 +128,5 @@ markers =
+  skip-gfx1100: architecture
+  skip-gfx1101: architecture
+  skip-gfx1102: architecture
++ skip-gfx1103: architecture
+  skip-gfx1151: architecture
+-- 
+2.49.0.windows.1
+
